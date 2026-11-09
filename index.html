@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>てんと てんを せんで つなごう｜特別支援教材開発研究所</title>
+<meta name="description" content="小学1年生算数「てんとてんをせんでつなごう」の学習アプリ。おてほんと同じ形を、点と点を線でつないでかきます。点の数・ななめの線・線の数を選べます。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#fdfaf3; --panel:#ffffff; --ink:#3a3a3a; --sub:#8a8478;
+  --line:#2f6fd6; --model:#e0782e; --dot:#6b6b6b; --sel:#e04848;
+  --hint:#e0782e55; --btn:#f1ece1; --ok:#3b9b5c;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overscroll-behavior:none}
+body{
+  font-family:"Zen Maru Gothic","BIZ UDPGothic",sans-serif;
+  background:var(--bg);color:var(--ink);
+  height:100vh;height:100dvh;overflow:hidden;
+  touch-action:manipulation;user-select:none;-webkit-user-select:none;
+  display:flex;flex-direction:column;
+}
+button{font-family:inherit;touch-action:manipulation;cursor:pointer}
+.hidden{display:none!important}
+
+/* ===== せってい ===== */
+#setup{flex:1;overflow:auto;display:flex;flex-direction:column;align-items:center;padding:20px 16px}
+#setup h1{font-size:clamp(24px,5vw,36px);margin:8px 0 18px;letter-spacing:.06em;text-align:center}
+.opt{width:min(560px,100%);background:var(--panel);border-radius:18px;padding:14px 16px;margin-bottom:12px;box-shadow:0 1px 4px #0001}
+.opt h2{font-size:18px;margin:0 0 10px;color:var(--sub)}
+.choices{display:flex;flex-wrap:wrap;gap:10px}
+.choices button{
+  min-width:64px;min-height:52px;padding:6px 16px;font-size:20px;font-weight:700;
+  border:3px solid transparent;border-radius:14px;background:var(--btn);color:var(--ink);
+}
+.choices button[aria-pressed="true"]{border-color:var(--line);background:#e6efff}
+#startBtn{
+  margin-top:8px;min-height:64px;min-width:220px;font-size:26px;font-weight:700;
+  border:none;border-radius:32px;background:var(--line);color:#fff;letter-spacing:.1em;
+}
+
+/* ===== がくしゅう ===== */
+#play{flex:1;display:flex;flex-direction:column;min-height:0}
+#bar{display:flex;align-items:center;gap:8px;padding:8px 10px}
+#bar .title{flex:1;font-size:20px;font-weight:700;text-align:center;min-height:1em}
+.icon{width:48px;height:48px;border:none;border-radius:12px;background:var(--btn);font-size:24px;display:flex;align-items:center;justify-content:center}
+#boards{flex:1;display:flex;gap:12px;padding:0 12px;min-height:0}
+.board{flex:1;display:flex;flex-direction:column;align-items:center;min-width:0;min-height:0}
+.board .label{font-size:18px;font-weight:700;margin:2px 0 4px;color:var(--sub)}
+.board svg{flex:1;width:100%;min-height:0;background:var(--panel);border-radius:18px;box-shadow:0 1px 4px #0001;touch-action:none}
+#modelBoard .label{color:var(--model)}
+#drawBoard .label{color:var(--line)}
+#msg{min-height:40px;text-align:center;font-size:22px;font-weight:700;padding:4px 8px}
+#msg.ok{color:#e03030}
+#okMark{animation:fadeIn .4s ease-out}
+@keyframes fadeIn{from{opacity:0}to{opacity:.85}}
+#tools{display:flex;justify-content:center;flex-wrap:wrap;gap:10px;padding:4px 10px calc(10px + env(safe-area-inset-bottom))}
+#tools button{min-height:54px;min-width:96px;padding:6px 16px;font-size:20px;font-weight:700;border:none;border-radius:16px;background:var(--btn);color:var(--ink)}
+#tools button[aria-pressed="true"]{background:#fde5d2}
+#drawSvg.erasing line{stroke-dasharray:2 22;cursor:pointer}
+#doneBtn{background:var(--line)!important;color:#fff!important}
+#nextBtn{background:var(--ok)!important;color:#fff!important}
+#tools button:disabled{opacity:.4}
+footer{font-size:11px;color:var(--sub);text-align:center;padding:2px 0 4px}
+#play footer{display:none}
+
+@media (orientation:portrait){
+  #boards{flex-direction:column;gap:6px}
+  #modelBoard{flex:2}
+  #drawBoard{flex:3}
+}
+@media (max-height:700px), (max-width:480px){
+  #bar{padding:4px 8px}
+  .icon{width:44px;height:44px;font-size:20px}
+  #bar .title{font-size:17px}
+  .board .label{font-size:14px;margin:0 0 2px}
+  #boards{padding:0 6px;gap:6px}
+  .board svg{border-radius:12px}
+  #msg{min-height:26px;font-size:17px;padding:2px 4px}
+  #tools{gap:6px;padding:4px 6px calc(6px + env(safe-area-inset-bottom))}
+  #tools button{min-height:44px;min-width:0;padding:4px 10px;font-size:16px;border-radius:12px}
+}
+@media (max-height:500px) and (orientation:landscape){
+  .board .label{display:none}
+}
+.free #modelBoard{display:none}
+.free #doneBtn,.free #hintBtn,.free #nextBtn,.free #skipBtn{visibility:hidden}
+#skipBtn.confirm{width:auto;padding:0 12px;font-size:18px;font-weight:700;background:#fde5d2}
+</style>
+</head>
+<body>
+
+<section id="setup">
+  <h1>てんと てんを<br>せんで つなごう</h1>
+
+  <div class="opt">
+    <h2>あそびかた</h2>
+    <div class="choices" data-key="mode">
+      <button data-v="challenge">おてほんに ちょうせん</button>
+      <button data-v="free">じゆうに かく</button>
+    </div>
+  </div>
+
+  <div class="opt">
+    <h2>てんの かず</h2>
+    <div class="choices" data-key="size">
+      <button data-v="3">3×3</button>
+      <button data-v="4">4×4</button>
+      <button data-v="5">5×5</button>
+    </div>
+  </div>
+
+  <div class="opt" id="optDiag">
+    <h2>ななめの せん</h2>
+    <div class="choices" data-key="diag">
+      <button data-v="0">なし</button>
+      <button data-v="1">あり</button>
+    </div>
+  </div>
+
+  <div class="opt" id="optCount">
+    <h2>せんの かず</h2>
+    <div class="choices" data-key="count">
+      <button data-v="2">2</button>
+      <button data-v="3">3</button>
+      <button data-v="4">4</button>
+      <button data-v="5">5</button>
+      <button data-v="6">6</button>
+      <button data-v="8">たくさん</button>
+    </div>
+  </div>
+
+  <button id="startBtn">はじめる</button>
+  <footer>特別支援教材開発研究所</footer>
+</section>
+
+<section id="play" class="hidden">
+  <div id="bar">
+    <button class="icon" id="backBtn" aria-label="せってい">⚙</button>
+    <div class="title" id="title"></div>
+    <button class="icon" id="skipBtn" aria-label="つぎの もんだい">▶</button>
+  </div>
+  <div id="boards">
+    <div class="board" id="modelBoard">
+      <div class="label">おてほん</div>
+      <svg id="modelSvg"></svg>
+    </div>
+    <div class="board" id="drawBoard">
+      <div class="label">かいてみよう</div>
+      <svg id="drawSvg"></svg>
+    </div>
+  </div>
+  <div id="msg" aria-live="polite"></div>
+  <div id="tools">
+    <button id="undoBtn">もどす</button>
+    <button id="eraseBtn" aria-pressed="false">けす</button>
+    <button id="clearBtn">ぜんぶ けす</button>
+    <button id="hintBtn" aria-pressed="false">ヒント</button>
+    <button id="doneBtn">できた</button>
+    <button id="nextBtn" class="hidden">つぎへ</button>
+  </div>
+  <footer>特別支援教材開発研究所</footer>
+</section>
+
+<script>
+'use strict';
+/* ================= 純粋関数 ================= */
+const Geo = (() => {
+  const gcd = (a, b) => { a = Math.abs(a); b = Math.abs(b); while (b) { [a, b] = [b, a % b]; } return a; };
+  const key = (x1, y1, x2, y2) =>
+    (x1 < x2 || (x1 === x2 && y1 < y2)) ? `${x1},${y1}-${x2},${y2}` : `${x2},${y2}-${x1},${y1}`;
+  // 線分を「となりあう格子点どうし」の最小単位に分ける（重なり・つなぎ方の違いを吸収）
+  function units(a, b) {
+    const dx = b[0] - a[0], dy = b[1] - a[1];
+    const g = gcd(dx, dy);
+    const out = [];
+    if (g === 0) return out;
+    const sx = dx / g, sy = dy / g;
+    for (let i = 0; i < g; i++) {
+      const x = a[0] + i * sx, y = a[1] + i * sy;
+      out.push(key(x, y, x + sx, y + sy));
+    }
+    return out;
+  }
+  function unitSet(lines) {
+    const s = new Set();
+    for (const [a, b] of lines) for (const k of units(a, b)) s.add(k);
+    return s;
+  }
+  function sameSet(a, b) {
+    if (a.size !== b.size) return false;
+    for (const k of a) if (!b.has(k)) return false;
+    return true;
+  }
+  // 折れ線の配列 → 線分の配列
+  function polysToLines(polys) {
+    const out = [];
+    for (const p of polys) for (let i = 0; i + 1 < p.length; i++) out.push([p[i], p[i + 1]]);
+    return out;
+  }
+  // 2本の線分が「とちゅうで」交わるか（はしが触れるだけは含めない）
+  function crosses(a, b, c, d) {
+    const o = (p, q, r) => Math.sign((q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]));
+    const o1 = o(a, b, c), o2 = o(a, b, d), o3 = o(c, d, a), o4 = o(c, d, b);
+    return o1 * o2 < 0 && o3 * o4 < 0;
+  }
+  // 乱数つき問題生成：つながった1本の折れ線
+  //  かんたんモード：同じ点を2回通らない・交差しない（最後に出発点へもどって閉じるのはOK）
+  //  かんたんモードで作れないときだけ、同じ点を通るのを許す（同じ線は通らない）
+  function randomPath(n, count, diag, rnd = Math.random) {
+    const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+    if (diag) dirs.push([1,1],[1,-1],[-1,1],[-1,-1]);
+    const maxLen = n - 1;
+    const pk = p => p[0] + ',' + p[1];
+    for (const simple of [true, false]) {
+      for (let attempt = 0; attempt < 400; attempt++) {
+        let cur = [Math.floor(rnd() * n), Math.floor(rnd() * n)];
+        const start = cur, pts = [cur], segs = [];
+        const used = new Set(), seen = new Set([pk(cur)]);
+        let prevDir = null, firstDir = null, ok = true, hasDiag = false;
+        for (let s = 0; s < count; s++) {
+          const last = s === count - 1;
+          const cands = [];
+          for (const d of dirs) {
+            if (prevDir && ((d[0] === prevDir[0] && d[1] === prevDir[1]) || (d[0] === -prevDir[0] && d[1] === -prevDir[1]))) continue;
+            for (let L = 1; L <= maxLen; L++) {
+              const q = [cur[0] + d[0] * L, cur[1] + d[1] * L];
+              if (q[0] < 0 || q[1] < 0 || q[0] >= n || q[1] >= n) break;
+              const us = units(cur, q);
+              if (us.some(u => used.has(u))) break;
+              if (simple) {
+                const mid = [];
+                for (let i = 1; i < L; i++) mid.push([cur[0] + d[0] * i, cur[1] + d[1] * i]);
+                if (mid.some(m => seen.has(pk(m)))) break;
+                if (segs.some(([a, b]) => crosses(a, b, cur, q))) break;
+                const closing = last && count >= 3 && q[0] === start[0] && q[1] === start[1] &&
+                  !(d[0] === firstDir[0] && d[1] === firstDir[1]);
+                if (seen.has(pk(q)) && !closing) continue;
+              }
+              cands.push({ d, p: q, us });
+            }
+          }
+          if (!cands.length) { ok = false; break; }
+          const c = cands[Math.floor(rnd() * cands.length)];
+          c.us.forEach(u => used.add(u));
+          for (let i = 1; i <= c.us.length; i++) seen.add(pk([cur[0] + c.d[0] * i, cur[1] + c.d[1] * i]));
+          if (c.d[0] && c.d[1]) hasDiag = true;
+          segs.push([cur, c.p]);
+          if (!firstDir) firstDir = c.d;
+          pts.push(c.p); cur = c.p; prevDir = c.d;
+        }
+        if (ok && (!diag || hasDiag)) return [pts];
+      }
+    }
+    return null;
+  }
+  // てん p と せんぶん ab の きょり
+  function segDist(p, a, b) {
+    const vx = b[0] - a[0], vy = b[1] - a[1];
+    const L = vx * vx + vy * vy;
+    let t = L ? ((p[0] - a[0]) * vx + (p[1] - a[1]) * vy) / L : 0;
+    t = Math.max(0, Math.min(1, t));
+    return Math.hypot(p[0] - (a[0] + t * vx), p[1] - (a[1] + t * vy));
+  }
+  // いちばん ちかい線（あとからかいた線を優先）
+  function hitLine(lines, p, tol) {
+    let best = -1, bd = tol;
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const d = segDist(p, lines[i][0], lines[i][1]);
+      if (d < bd - 1e-9) { bd = d; best = i; }
+    }
+    return best;
+  }
+  const hasDiag = lines => lines.some(([a, b]) => a[0] !== b[0] && a[1] !== b[1]);
+  // おてほんのかたちが せってい（ななめ・せんのかず）に あうか
+  function fits(polys, diag, count) {
+    const lines = polysToLines(polys);
+    if (hasDiag(lines) !== !!diag) return false;
+    return count >= 8 ? lines.length >= 7 : lines.length === count;
+  }
+  return { gcd, key, units, unitSet, sameSet, polysToLines, randomPath, hasDiag, fits, segDist, hitLine, crosses };
+})();
+
+/* ================= かたち（おてほん） ================= */
+const SHAPES = {
+  3: [
+    { name: 'しかく',   p: [[[0,0],[2,0],[2,2],[0,2],[0,0]]] },
+    { name: 'やま',     p: [[[0,2],[1,0],[2,2]]] },
+    { name: 'さんかく', p: [[[0,0],[2,0],[0,2],[0,0]]] },
+    { name: 'ひしがた', p: [[[1,0],[2,1],[1,2],[0,1],[1,0]]] },
+    { name: 'かいだん', p: [[[0,2],[0,1],[1,1],[1,0],[2,0]]] },
+  ],
+  4: [
+    { name: 'はた',     p: [[[0,3],[0,0],[3,1],[0,2]]] },
+    { name: 'コップ',   p: [[[0,0],[1,3],[2,3],[3,0]]] },
+    { name: 'かさ',     p: [[[0,1],[1,0],[2,0],[3,1],[0,1]], [[2,1],[2,3],[1,3]]] },
+    { name: 'ギザギザ', p: [[[0,3],[1,0],[2,3],[3,0]]] },
+    { name: 'リボン',   p: [[[0,0],[3,3],[3,0],[0,3],[0,0]]] },
+    { name: 'しかく',   p: [[[0,0],[3,0],[3,3],[0,3],[0,0]]] },
+    { name: 'はこ',     p: [[[0,0],[0,3],[3,3],[3,0]]] },
+    { name: 'いす',     p: [[[0,0],[0,3]], [[0,2],[3,2],[3,3]]] },
+    { name: 'やま',     p: [[[0,3],[1,1],[2,3]]] },
+  ],
+  5: [
+    { name: 'いえ',     p: [[[0,2],[2,0],[4,2],[0,2]], [[0,2],[0,4],[4,4],[4,2]]] },
+    { name: 'さかな',   p: [[[1,2],[2,1],[3,2],[2,3],[1,2]], [[3,2],[4,1],[4,3],[3,2]]] },
+    { name: 'ヨット',   p: [[[2,0],[2,3]], [[2,0],[4,2],[2,2]], [[0,3],[4,3],[3,4],[1,4],[0,3]]] },
+    { name: 'きのこ',   p: [[[0,2],[1,0],[3,0],[4,2],[0,2]], [[1,2],[1,4],[3,4],[3,2]]] },
+    { name: 'しかく',   p: [[[1,1],[3,1],[3,3],[1,3],[1,1]]] },
+    { name: 'はこ',     p: [[[1,1],[1,3],[3,3],[3,1]]] },
+    { name: 'まど',     p: [[[0,0],[4,0],[4,4],[0,4],[0,0]], [[2,0],[2,4]], [[0,2],[4,2]]] },
+    { name: 'かいだん', p: [[[0,4],[0,3],[1,3],[1,2],[2,2],[2,1],[3,1]]] },
+    { name: 'おしろ',   p: [[[1,0],[3,0],[3,2],[4,2],[4,4],[0,4],[0,2],[1,2],[1,0]]] },
+    { name: 'さんかく', p: [[[0,4],[2,1],[4,4],[0,4]]] },
+    { name: 'ひしがた', p: [[[2,0],[4,2],[2,4],[0,2],[2,0]]] },
+    { name: 'ロケット', p: [[[2,0],[3,1],[3,3],[1,3],[1,1],[2,0]], [[1,2],[0,3],[0,4],[1,3]], [[3,2],[4,3],[4,4],[3,3]]] },
+  ],
+};
+
+/* ================= 状態 ================= */
+const S = {
+  mode: 'challenge', size: 4, diag: 0, count: 3,
+  model: [],          // おてほんの線分
+  lines: [],          // こどもがかいた線分
+  sel: null,          // えらんでいる点
+  drag: null,         // { from:[x,y], to:{x,y} }
+  erase: false, hint: false, solved: false, used: new Set(), lastKey: '',
+};
+
+/* ================= せってい ================= */
+const $ = id => document.getElementById(id);
+function syncSetup() {
+  document.querySelectorAll('.choices').forEach(g => {
+    const k = g.dataset.key;
+    g.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(String(S[k]) === b.dataset.v)));
+  });
+  if (S.size === 3 && S.count === 8) { S.count = 6; return syncSetup(); }
+  document.querySelector('[data-key=count] [data-v="8"]').classList.toggle('hidden', S.size === 3);
+  $('optDiag').classList.toggle('hidden', S.mode !== 'challenge');
+  $('optCount').classList.toggle('hidden', S.mode !== 'challenge');
+}
+document.querySelectorAll('.choices').forEach(g => {
+  g.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    const k = g.dataset.key;
+    S[k] = k === 'mode' ? b.dataset.v : Number(b.dataset.v);
+    syncSetup();
+  });
+});
+$('startBtn').addEventListener('click', () => {
+  $('setup').classList.add('hidden');
+  $('play').classList.remove('hidden');
+  document.body.classList.toggle('free', S.mode === 'free');
+  S.used = new Set(); S.lastKey = ''; S.lastName = '';
+  newProblem();
+});
+$('backBtn').addEventListener('click', () => {
+  $('play').classList.add('hidden');
+  $('setup').classList.remove('hidden');
+  syncSetup();
+});
+
+/* ================= もんだい ================= */
+function newProblem() {
+  const n = S.size;
+  let title = '';
+  if (S.mode === 'challenge') {
+    // かたち（なまえつき）と ランダムを まぜて だす
+    const fit = SHAPES[n].filter(s => Geo.fits(s.p, S.diag, S.count));
+    if (fit.length && fit.every(s => S.used.has(s.name))) S.used.clear(); // つかいきったら また だす
+    const shapes = fit.filter(s => !S.used.has(s.name) && s.name !== S.lastName);
+    let lines, k, tries = 0;
+    if (shapes.length && Math.random() < 0.6) {
+      const sh = shapes[Math.floor(Math.random() * shapes.length)];
+      S.used.add(sh.name); S.lastName = sh.name;
+      lines = Geo.polysToLines(sh.p); title = sh.name;
+    } else {
+      do {
+        let polys = null;
+        for (let c = S.count; !polys && c >= 2; c--) polys = Geo.randomPath(n, c, !!S.diag);
+        lines = Geo.polysToLines(polys);
+        k = [...Geo.unitSet(lines)].sort().join('|');
+      } while (k === S.lastKey && ++tries < 20);
+    }
+    if (!title) S.lastName = '';
+    S.lastKey = [...Geo.unitSet(lines)].sort().join('|');
+    S.model = lines;
+  } else {
+    S.model = [];
+  }
+  resetSkip();
+  $('title').textContent = title;
+  S.lines = []; S.sel = null; S.drag = null; S.solved = false; S.hint = false; S.erase = false;
+  $('hintBtn').setAttribute('aria-pressed', 'false');
+  setMsg('');
+  $('nextBtn').classList.add('hidden');
+  $('doneBtn').classList.remove('hidden');
+  render();
+}
+
+/* ================= えがく ================= */
+const NS = 'http://www.w3.org/2000/svg';
+const GAP = 100, PAD = 50;
+function vb(n) { const w = (n - 1) * GAP + PAD * 2; return `0 0 ${w} ${w}`; }
+const P = v => PAD + v * GAP;
+function el(tag, attrs) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; }
+function drawLines(svg, lines, color, w) {
+  for (const [a, b] of lines) svg.appendChild(el('line', { x1: P(a[0]), y1: P(a[1]), x2: P(b[0]), y2: P(b[1]), stroke: color, 'stroke-width': w, 'stroke-linecap': 'round' }));
+}
+function drawDots(svg, n, selected, minR = 9) {
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+    const isSel = selected && selected[0] === x && selected[1] === y;
+    svg.appendChild(el('circle', { cx: P(x), cy: P(y), r: isSel ? Math.max(16, minR * 1.6) : minR, fill: isSel ? 'var(--sel)' : 'var(--dot)' }));
+  }
+}
+function render() {
+  const n = S.size;
+  const m = $('modelSvg'), d = $('drawSvg');
+  m.setAttribute('viewBox', vb(n)); d.setAttribute('viewBox', vb(n));
+  m.replaceChildren(); d.replaceChildren();
+  drawLines(m, S.model, 'var(--model)', 12);
+  { const mb = m.getBoundingClientRect(), ms = Math.min(mb.width, mb.height) / ((n - 1) * GAP + PAD * 2);
+    drawDots(m, n, null, ms > 0 ? Math.min(14, Math.max(9, 4 / ms)) : 9); }
+  if (S.hint) drawLines(d, S.model, 'var(--hint)', 22);
+  drawLines(d, S.lines, 'var(--line)', S.erase ? 16 : 12);
+  d.classList.toggle('erasing', S.erase);
+  if (S.drag && S.drag.to) {
+    const a = S.drag.from;
+    d.appendChild(el('line', { x1: P(a[0]), y1: P(a[1]), x2: S.drag.to.x, y2: S.drag.to.y, stroke: 'var(--line)', 'stroke-width': 8, 'stroke-linecap': 'round', 'stroke-dasharray': '4 16', opacity: .7 }));
+  }
+  // 小さい画面では 点を大きく（画面上で直径12px以上）
+  const vw = (n - 1) * GAP + PAD * 2;
+  const box = d.getBoundingClientRect();
+  const sc = Math.min(box.width, box.height) / vw;
+  const minR = sc > 0 ? Math.min(18, Math.max(9, 6 / sc)) : 9;
+  drawDots(d, n, S.sel, minR);
+  if (S.solved) {
+    // せいかいの あかまる
+    const c = PAD + (n - 1) * GAP / 2;
+    d.appendChild(el('circle', { id: 'okMark', cx: c, cy: c, r: c - 14, fill: 'none', stroke: '#e03030', 'stroke-width': 18, opacity: .85 }));
+  }
+  $('undoBtn').disabled = S.solved || !S.lines.length;
+  $('clearBtn').disabled = S.solved || !S.lines.length;
+  $('eraseBtn').disabled = S.solved || !S.lines.length;
+  $('eraseBtn').setAttribute('aria-pressed', String(S.erase));
+}
+function setMsg(t, ok) { const e = $('msg'); e.textContent = t; e.classList.toggle('ok', !!ok); }
+
+/* ================= そうさ（タップ・ドラッグ） ================= */
+function svgPoint(evt) {
+  const svg = $('drawSvg');
+  const pt = svg.createSVGPoint(); pt.x = evt.clientX; pt.y = evt.clientY;
+  const ctm = svg.getScreenCTM(); if (!ctm) return null;
+  return pt.matrixTransform(ctm.inverse());
+}
+function nearestDot(p) {
+  if (!p) return null;
+  const n = S.size;
+  const x = Math.round((p.x - PAD) / GAP), y = Math.round((p.y - PAD) / GAP);
+  if (x < 0 || y < 0 || x >= n || y >= n) return null;
+  const dist = Math.hypot(p.x - P(x), p.y - P(y));
+  return dist <= GAP * 0.42 ? [x, y] : null;
+}
+const eq = (a, b) => a && b && a[0] === b[0] && a[1] === b[1];
+function addLine(a, b) {
+  if (eq(a, b)) return false;
+  const have = Geo.unitSet(S.lines);
+  const us = Geo.units(a, b);
+  if (us.every(u => have.has(u))) return false; // もうかいてある線
+  S.lines.push([a, b]);
+  if (!S.solved) setMsg('');
+  return true;
+}
+let downDot = null, moved = false;
+$('drawSvg').addEventListener('pointerdown', e => {
+  if (S.solved) return;
+  if (S.erase) {
+    const p = svgPoint(e); if (!p) return;
+    const i = Geo.hitLine(S.lines, [(p.x - PAD) / GAP, (p.y - PAD) / GAP], 0.3);
+    if (i >= 0) { S.lines.splice(i, 1); setMsg(''); }
+    if (!S.lines.length) S.erase = false;
+    render(); return;
+  }
+  const dot = nearestDot(svgPoint(e));
+  if (!dot) { S.sel = null; render(); return; }
+  e.preventDefault();
+  downDot = dot; moved = false;
+  S.drag = { from: dot, to: null };
+});
+window.addEventListener('pointermove', e => {
+  if (!S.drag) return;
+  const p = svgPoint(e); if (!p) return;
+  const a = S.drag.from;
+  if (Math.hypot(p.x - P(a[0]), p.y - P(a[1])) > GAP * 0.3) moved = true;
+  if (moved) { S.drag.to = { x: p.x, y: p.y }; render(); }
+});
+function endPointer(e) {
+  if (!S.drag) return;
+  const from = S.drag.from;
+  const dot = nearestDot(svgPoint(e));
+  S.drag = null;
+  if (moved) {
+    // ドラッグ：はなした点とつなぐ
+    if (dot && !eq(dot, from)) addLine(from, dot);
+    S.sel = null;
+  } else {
+    // タップ：1つめ→えらぶ、2つめ→つなぐ
+    if (S.sel && eq(S.sel, from)) S.sel = null;
+    else if (S.sel) { addLine(S.sel, from); S.sel = null; }
+    else S.sel = from;
+  }
+  downDot = null; render();
+}
+window.addEventListener('pointerup', endPointer);
+window.addEventListener('pointercancel', () => { S.drag = null; downDot = null; render(); });
+
+/* ================= ボタン ================= */
+$('eraseBtn').addEventListener('click', () => { S.erase = !S.erase; S.sel = null; render(); });
+$('undoBtn').addEventListener('click', () => { S.lines.pop(); if (!S.lines.length) S.erase = false; S.sel = null; setMsg(''); render(); });
+$('clearBtn').addEventListener('click', () => { S.lines = []; S.erase = false; S.sel = null; setMsg(''); render(); });
+$('hintBtn').addEventListener('click', () => {
+  S.hint = !S.hint; $('hintBtn').setAttribute('aria-pressed', String(S.hint)); render();
+});
+$('doneBtn').addEventListener('click', () => {
+  S.sel = null; S.erase = false;
+  if (!S.lines.length) { setMsg('てんと てんを つないでみよう'); render(); return; }
+  if (Geo.sameSet(Geo.unitSet(S.lines), Geo.unitSet(S.model))) {
+    S.solved = true;
+    setMsg('おなじ かたちに なったね', true);
+    $('doneBtn').classList.add('hidden');
+    $('nextBtn').classList.remove('hidden');
+  } else {
+    setMsg('おてほんと くらべて みよう');
+  }
+  render();
+});
+$('nextBtn').addEventListener('click', () => newProblem());
+// とちゅうで とばす：かいた線があるときは 2回おして すすむ（まちがって消さないため）
+let skipTimer = null;
+function resetSkip() { clearTimeout(skipTimer); skipTimer = null; const b = $('skipBtn'); b.classList.remove('confirm'); b.textContent = '▶'; }
+$('skipBtn').addEventListener('click', () => {
+  if (S.solved || !S.lines.length || skipTimer) { resetSkip(); newProblem(); return; }
+  const b = $('skipBtn'); b.classList.add('confirm'); b.textContent = 'とばす？';
+  skipTimer = setTimeout(resetSkip, 3000);
+});
+
+window.addEventListener('resize', () => { if (!$('play').classList.contains('hidden')) render(); });
+// iOS ピンチズーム抑制
+document.addEventListener('gesturestart', e => e.preventDefault());
+
+syncSetup();
+if (typeof module !== 'undefined') module.exports = { Geo, SHAPES };
+</script>
+</body>
+</html>
